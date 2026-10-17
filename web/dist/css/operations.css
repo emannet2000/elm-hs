@@ -1,0 +1,37 @@
+body.operations.app-shell { display:block; margin:0; min-height:100vh; font:14px/1.55 system-ui,sans-serif; }
+.operations main { max-width:1450px; margin:auto; padding:8px; }
+.operations .page-intro { display:flex; gap:20px; align-items:center; justify-content:space-between; margin:0 0 24px; }
+.operations h1 { font-size:26px; margin:4px 0 8px; }
+.operations .eyebrow { font-size:10px; letter-spacing:.13em; color:var(--gold); font-weight:700; }
+.operations p { color:var(--text-muted); margin:4px 0 12px; }
+.operations #tabs { display:flex; gap:5px; flex-wrap:wrap; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:24px; }
+.operations button,.operations .button { border:1px solid var(--border); background:var(--surface); color:var(--text); padding:9px 14px; border-radius:8px; cursor:pointer; font:inherit; text-decoration:none; display:inline-block; }
+.operations button:hover { border-color:var(--gold); }
+.operations button.active,.operations button.primary { background:var(--primary); border-color:var(--primary); color:var(--on-primary); }
+.operations button:disabled { opacity:.55; cursor:wait; }
+.operations :is(input,select,textarea) { width:100%; min-width:0; padding:10px 12px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; font:inherit; }
+.operations textarea { min-height:90px; resize:vertical; }
+.operations label { display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--text-muted); }
+.operations .fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin:14px 0; }
+.operations .panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:18px; box-shadow:var(--shadow); overflow-wrap:anywhere; }
+.operations .panel h2 { font-size:17px; margin-bottom:12px; }
+.operations .panel h3 { font-size:14px; margin-bottom:10px; }
+.operations .row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border-soft); flex-wrap:wrap; }
+.operations .badge { background:var(--surface-3); padding:3px 9px; border-radius:20px; font-size:11px; white-space:nowrap; }
+.operations .good { color:var(--success); }.operations .warning { color:var(--danger); }
+.operations .table-scroll { overflow:auto; }
+.operations table { border-collapse:collapse; width:100%; font-size:13px; }
+.operations th { text-align:left; color:var(--text-muted); background:var(--surface-2); font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+.operations td,.operations th { padding:12px; border-bottom:1px solid var(--border); vertical-align:top; }
+.operations .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin:0 0 20px; }
+.operations .metric { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; }
+.operations .metric strong { display:block; font-size:28px; margin:8px 0; }.operations .metric span { color:var(--text-muted); font-size:12px; }
+.operations #notice:not(:empty) { padding:12px 16px; border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:8px; margin-bottom:16px; background:var(--surface); }
+.operations #notice.error { border-left-color:var(--danger); color:var(--danger); }
+.operations .muted { color:var(--text-muted); }.operations .stack { display:grid; gap:10px; }
+.operations .link-output { word-break:break-all; user-select:all; padding:14px; border:1px solid var(--gold); margin:12px 0; }
+.operations pre { white-space:pre-wrap; font-size:12px; color:var(--text-muted); }
+.operations .portal-header { display:flex; gap:16px; align-items:center; margin:24px 0; }.operations .portal-header img { width:56px; height:56px; }
+.operations.portal main { max-width:900px; padding:24px; }
+@media(max-width:600px) { .operations .fields { grid-template-columns:1fr; }.operations h1 { font-size:22px; }.operations .page-intro { align-items:flex-start; }.operations .panel { padding:14px; } }
+@media print { .operations #tabs,.operations .page-intro,.operations #notice,.operations button,.operations form,.operations .no-print { display:none!important; }.operations .panel { box-shadow:none; } }

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ECC CRM</title>
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/css/reference.css" />
+  <link rel="stylesheet" href="/css/workspace-theme.css" />
+  <link rel="stylesheet" href="/css/theme-adapter.css" />
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/main.js"></script>
+  <script>
+    (function () {
+      window.addEventListener('message', function (event) {
+        if (event.origin !== location.origin || !event.data || event.data.type !== 'ecc-workflow-height') return;
+        var frame = document.querySelector('.workflow-frame');
+        if (frame && event.source === frame.contentWindow) frame.style.height = Math.min(50000, Math.max(700, Number(event.data.height) || 700)) + 'px';
+      });
+      var stored = localStorage.getItem('ecc-token');
+      var dark = localStorage.getItem('ecc-dark');
+      window.__eccToken = stored;
+      window.__eccDark = dark;
+      var app = Elm.Main.init({ node: document.getElementById('app') });
+      app.ports.loadToken.send(stored);
+      app.ports.loadDark.send(dark === '1');
+      app.ports.saveToken.subscribe(function (value) {
+        if (value === null || value === undefined) {
+          var previous = localStorage.getItem('ecc-token');
+          if (previous) fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + previous }, keepalive: true });
+          localStorage.removeItem('ecc-token');
+        } else {
+          localStorage.setItem('ecc-token', value);
+        }
+      });
+      app.ports.saveDark.subscribe(function (flag) {
+        localStorage.setItem('ecc-dark', flag ? '1' : '0');
+      });
+    })();
+  </script>
+</body>
+</html>

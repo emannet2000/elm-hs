@@ -1,0 +1,9 @@
+[Unit]
+Description=ECC CRM PostgreSQL backup
+[Service]
+Type=oneshot
+User=ecc
+WorkingDirectory=/opt/ecc-crm
+EnvironmentFile=/etc/ecc-crm/backup.env
+ExecStart=/opt/ecc-crm/scripts/backup.sh
+UMask=0077

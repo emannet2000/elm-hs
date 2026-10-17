@@ -1,0 +1,1 @@
+{"name":"ecc-crm-workflows","private":true,"scripts":{"test":"node --test tests/workflow-dom.test.cjs","test:database":"./scripts/test-database.sh","build":"./scripts/build.sh"},"devDependencies":{"linkedom":"0.18.12"}}

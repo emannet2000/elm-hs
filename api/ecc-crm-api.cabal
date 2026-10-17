@@ -1,0 +1,54 @@
+cabal-version:      2.4
+name:               ecc-crm-api
+version:            0.1.0
+synopsis:           ECC CRM REST API (Haskell + Scotty + PostgreSQL)
+build-type:         Simple
+
+executable ecc-crm-api
+    main-is:          Main.hs
+    hs-source-dirs:   app, src
+    other-modules:    ECC.Operations
+                    , ECC.Auth
+                    , ECC.Config
+                    , ECC.Csv
+                    , ECC.DB
+                    , ECC.Migrations
+                    , ECC.Models
+                    , ECC.Pool
+                    , ECC.RateLimit
+                    , ECC.Routes
+                    , ECC.Seed
+    default-language: GHC2021
+    default-extensions: DeriveAnyClass
+    ghc-options:      -Wall -O1 -threaded -rtsopts "-with-rtsopts=-N"
+    build-depends:    base >=4.17 && <5
+                    , aeson >=2
+                    , bcrypt
+                    , base64-bytestring
+                    , bytestring
+                    , containers
+                    , cryptohash-sha256
+                    , exceptions
+                    , directory
+                    , filepath
+                    , http-types
+                    , postgresql-simple
+                    , scotty >=0.20
+                    , text
+                    , time
+                    , wai
+                    , wai-cors
+                    , wai-extra
+                    , warp
+
+
+test-suite auth-tests
+    type: exitcode-stdio-1.0
+    main-is: Auth.hs
+    hs-source-dirs: tests, src
+    other-modules: ECC.Auth
+    default-language: GHC2021
+    ghc-options: -Wall
+    build-depends: base >=4.17 && <5, aeson >=2, bcrypt,
+                   base64-bytestring, bytestring, cryptohash-sha256,
+                   text, time, http-types

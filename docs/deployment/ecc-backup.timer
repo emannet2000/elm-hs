@@ -1,0 +1,8 @@
+[Unit]
+Description=Daily ECC CRM backup
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+RandomizedDelaySec=600
+[Install]
+WantedBy=timers.target
