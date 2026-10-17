@@ -182,6 +182,11 @@ app env origin = do
 
   -- First admin creation requires the deployment owner's private signing key.
   -- The table lock serializes setup against all concurrent user inserts.
+  S.get "/api/auth/setup" $ do
+    counts <- liftIO $ withConn env $ \conn ->
+      (query_ conn "SELECT COUNT(*) FROM users" :: IO [Only Int])
+    S.json (A.object ["required" .= (counts == [Only 0])])
+
   S.post "/api/auth/setup" $ do
     setupRequest <- S.request
     let supplied = lookup "X-Setup-Token" (Wai.requestHeaders setupRequest)
