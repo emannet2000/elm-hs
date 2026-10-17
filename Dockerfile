@@ -22,7 +22,9 @@ COPY --from=build /out/ecc-crm-api /app/ecc-crm-api
 COPY api/migrations/ /app/migrations/
 # The compiled Elm frontend is already committed to this repository.
 COPY web/dist/ /app/web/
-ENV WEB_DIST=/app/web \
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    WEB_DIST=/app/web \
     SEED_DEMO=false \
     PORT=10000
 USER ecc
