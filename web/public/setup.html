@@ -27,7 +27,7 @@ form.addEventListener('submit',async event=>{
     try{result=JSON.parse(responseText);}
     catch{throw new Error('Server returned an unexpected response (HTTP '+response.status+'). Refresh this page after the latest deployment, or check Render logs.');}
     if(!response.ok)throw new Error(result.error||'Setup failed.');
-    form.reset();form.hidden=true;message.textContent='Administrator created. Select “Back to sign in” and use your new email and password.';
+    form.reset();window.location.replace('/');
   }catch(error){message.textContent=error.message;button.disabled=false;}
 });
 </script></html>
