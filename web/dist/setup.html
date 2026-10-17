@@ -14,6 +14,11 @@
 <p id="message" role="status" aria-live="polite"></p><a href="/">Back to sign in</a></main>
 <script>
 const form=document.getElementById('setup'), message=document.getElementById('message'), button=document.getElementById('submit');
+button.disabled=true;
+fetch('/api/auth/setup',{cache:'no-store'})
+  .then(response=>{if(!response.ok)throw new Error('Could not check setup status.');return response.json();})
+  .then(result=>{if(result.required===false){window.location.replace('/');}else{button.disabled=false;}})
+  .catch(()=>{button.disabled=false;message.textContent='Could not check setup status. You can retry or return to sign in.';});
 form.addEventListener('submit',async event=>{
   event.preventDefault();
   const password=document.getElementById('password').value;
