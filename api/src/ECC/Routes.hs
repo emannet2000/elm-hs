@@ -9,6 +9,7 @@
 module ECC.Routes (app) where
 
 import Control.Monad (void)
+import qualified Crypto.Hash.SHA256 as SHA256
 import Control.Monad.Catch (Handler(..))
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Aeson as A
@@ -29,7 +30,7 @@ import Network.Wai.Parse (FileInfo (..))
 import qualified Web.Scotty as S
 
 import ECC.Operations (operations, sessionValid, revokeSession, registerSession, canAccess, validUpload)
-import Database.PostgreSQL.Simple (query, query_, withTransaction, Only(..), SqlError(..))
+import Database.PostgreSQL.Simple (query, query_, execute_, withTransaction, Only(..), SqlError(..))
 import ECC.Auth (bearerToken, checkPassword, makeToken, verifyToken)
 import ECC.Csv (clientsCsv, leadsCsv, parseCsv)
 import ECC.DB
@@ -176,6 +177,43 @@ app env origin = do
   -- ---- health ----
   S.get "/api/health" $
     S.json (A.object ["status" .= ("ok" :: T.Text)])
+
+
+  -- First admin creation requires the deployment owner's private signing key.
+  -- The table lock serializes setup against all concurrent user inserts.
+  S.post "/api/auth/setup" $ do
+    setupRequest <- S.request
+    let supplied = lookup "X-Setup-Token" (Wai.requestHeaders setupRequest)
+    now <- liftIO getCurrentTime
+    let key = "first-admin-setup"
+    throttled <- liftIO (isThrottled (envLimiter env) now key)
+    if throttled
+      then tooManyRequests "Too many setup attempts. Try again later."
+      else if maybe True (\t -> SHA256.hash t /= SHA256.hash (envSecret env)) supplied
+        then do
+          liftIO (recordFailure (envLimiter env) now key)
+          forbidden "Invalid setup key. Use JWT_SECRET from this service's Render environment."
+        else do
+          nu <- S.jsonData
+          let email = T.toLower (T.strip (nuEmail nu))
+              name = T.strip (nuName nu)
+              password = nuPassword nu
+          if T.null name || T.length name > 100 || T.length email > 255
+               || not ("@" `T.isInfixOf` email)
+               || T.length password < 12 || B.length (TE.encodeUtf8 password) > 72
+            then badRequest "Enter a name, valid email, and password of at least 12 characters (at most 72 UTF-8 bytes)."
+            else do
+              created <- liftIO $ withConn env $ \conn -> withTransaction conn $ do
+                void $ execute_ conn "LOCK TABLE users IN EXCLUSIVE MODE"
+                counts <- query_ conn "SELECT COUNT(*) FROM users" :: IO [Only Int]
+                if counts /= [Only 0]
+                  then pure False
+                  else addUser conn email name "admin" password >> pure True
+              if created
+                then do
+                  liftIO (clearFailures (envLimiter env) key)
+                  S.json (A.object ["created" .= True])
+                else forbidden "Setup is closed because an account already exists. Sign in or contact your administrator."
 
   -- ---- auth ----
   S.post "/api/auth/login" $ do

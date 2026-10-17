@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Create first administrator · ECC CRM</title>
+<style>body{margin:0;background:#f1f5f9;color:#172b43;font:16px system-ui}main{max-width:440px;margin:6vh auto;padding:32px;background:white;border-radius:18px;box-shadow:0 12px 40px #1232}h1{font-size:26px}label{display:block;margin-top:18px}input,button{box-sizing:border-box;width:100%;padding:12px;border:1px solid #bac6d3;border-radius:8px;font:inherit}input{margin-top:6px}button{background:#173f62;color:white;margin-top:24px;cursor:pointer}button:disabled{opacity:.6}small{display:block;color:#506378;margin-top:8px}#message{white-space:pre-wrap}a{color:#173f62}@media(max-width:520px){main{margin:20px;padding:24px}}</style>
+<main><h1>Create first administrator</h1><p>Set up your ECC workspace. This action is available only before the first account exists.</p>
+<form id="setup">
+<label>Setup key<input id="key" type="password" required autocomplete="off"></label>
+<small>Copy JWT_SECRET from your Render service's Environment page. This key verifies that you own the deployment. Do not use it as your account password.</small>
+<label>Your name<input id="name" required maxlength="100" autocomplete="name"></label>
+<label>Work email<input id="email" type="email" required maxlength="255" autocomplete="username"></label>
+<label>New password<input id="password" type="password" required minlength="12" autocomplete="new-password"></label>
+<label>Confirm password<input id="confirm" type="password" required minlength="12" autocomplete="new-password"></label>
+<button id="submit">Create administrator</button></form>
+<p id="message" role="status" aria-live="polite"></p><a href="/">Back to sign in</a></main>
+<script>
+const form=document.getElementById('setup'), message=document.getElementById('message'), button=document.getElementById('submit');
+form.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const password=document.getElementById('password').value;
+  if(password!==document.getElementById('confirm').value){message.textContent='Passwords do not match.';return;}
+  if(new TextEncoder().encode(password).length>72){message.textContent='Password must be at most 72 UTF-8 bytes.';return;}
+  button.disabled=true;message.textContent='Creating your account…';
+  try{
+    const response=await fetch('/api/auth/setup',{method:'POST',headers:{'Content-Type':'application/json','X-Setup-Token':document.getElementById('key').value},body:JSON.stringify({email:document.getElementById('email').value,name:document.getElementById('name').value,password,role:'admin'})});
+    const result=await response.json();
+    if(!response.ok)throw new Error(result.error||'Setup failed.');
+    form.reset();form.hidden=true;message.textContent='Administrator created. Select “Back to sign in” and use your new email and password.';
+  }catch(error){message.textContent=error.message;button.disabled=false;}
+});
+</script></html>
