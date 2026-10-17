@@ -13,7 +13,8 @@ import qualified Crypto.Hash.SHA256 as SHA256
 import Control.Monad.Catch (Handler(..))
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Aeson as A
-import Data.Aeson ((.=))
+import Data.Aeson ((.=), (.:))
+import Data.Aeson.Types (parseEither)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import Data.Maybe (fromMaybe)
@@ -194,7 +195,11 @@ app env origin = do
           liftIO (recordFailure (envLimiter env) now key)
           forbidden "Invalid setup key. Use JWT_SECRET from this service's Render environment."
         else do
-          nu <- S.jsonData
+          rawBody <- S.body
+          nu <- case A.eitherDecode rawBody >>= parseEither (A.withObject "First administrator" (\o ->
+                      NewUser <$> o .: "email" <*> o .: "name" <*> pure "admin" <*> o .: "password")) of
+            Left _ -> badRequest "Provide email, name, and password as JSON strings." >> S.finish
+            Right value -> pure value
           let email = T.toLower (T.strip (nuEmail nu))
               name = T.strip (nuName nu)
               password = nuPassword nu

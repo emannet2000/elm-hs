@@ -22,7 +22,10 @@ form.addEventListener('submit',async event=>{
   button.disabled=true;message.textContent='Creating your account…';
   try{
     const response=await fetch('/api/auth/setup',{method:'POST',headers:{'Content-Type':'application/json','X-Setup-Token':document.getElementById('key').value},body:JSON.stringify({email:document.getElementById('email').value,name:document.getElementById('name').value,password,role:'admin'})});
-    const result=await response.json();
+    const responseText=await response.text();
+    let result;
+    try{result=JSON.parse(responseText);}
+    catch{throw new Error('Server returned an unexpected response (HTTP '+response.status+'). Refresh this page after the latest deployment, or check Render logs.');}
     if(!response.ok)throw new Error(result.error||'Setup failed.');
     form.reset();form.hidden=true;message.textContent='Administrator created. Select “Back to sign in” and use your new email and password.';
   }catch(error){message.textContent=error.message;button.disabled=false;}
