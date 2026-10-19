@@ -1,0 +1,163 @@
+name: Apply native lifecycle
+
+on:
+  push:
+    branches:
+      - work/native-lifecycle
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[native-lifecycle-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/native-lifecycle
+          fetch-depth: 0
+
+      - name: Apply lifecycle changes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              s = p.read_text()
+              if old not in s:
+                  raise SystemExit(f"expected pattern not found in {path}: {old[:100]!r}")
+              p.write_text(s.replace(old, new, 1))
+
+          replace('web/src/Types.elm', '''leadStages =
+              [ "New Lead"
+              , "Contacted"
+              , "Initial Assessment"
+              , "Qualified"
+              , "Consultation Booked"
+              , "Proposal Sent"
+              , "Converted"
+              , "Closed/Lost"
+              ]''', '''leadStages =
+              [ "Lead"
+              , "Qualified"
+              , "Consultation"
+              , "Application/Deal"
+              , "Student/Client"
+              , "Completed"
+              , "Lost"
+              ]''')
+
+          replace('web/src/Types.elm', '''caseStages =
+              [ "Documents Under Review", "Submitted", "Decision Pending", "Approved", "Rejected" ]''', '''caseStages =
+              [ "Submitted", "Processing", "Approved", "Completed", "Cancelled", "Lost" ]''')
+
+          replace('web/src/State.elm', '    , stage = "New Lead"', '    , stage = "Lead"')
+          replace('web/src/State.elm', '    , stage = "New Lead"', '    , stage = "Lead"')
+          replace('web/src/State.elm', '    , stage = "Documents Under Review", deadline = ""', '    , stage = "Submitted", deadline = ""')
+
+          replace('web/src/Views.elm', 'import Api\nimport State exposing (..)', 'import Api\nimport Lifecycle\nimport State exposing (..)')
+          replace('web/src/Views.elm', '            , selectField "Stage" Types.leadStages f.stage (\\v -> UpdateAddLead (\\g -> { g | stage = v }))\n', '')
+          replace('web/src/Views.elm', '        , selectField "Stage" Types.leadStages f.stage (\\v -> UpdateEditLead (\\g -> { g | stage = v }))\n', '')
+
+          old_actions = '''                        , button [ class "btn", onClick (AdvanceClicked l.id) ] [ text "Advance ▸" ]
+                        , button [ class "btn btn-success", onClick (ConvertClicked l.id) ] [ text "Convert to Client" ]
+                        , button [ class "btn btn-danger", onClick (DeleteLeadConfirmed l.id) ] [ text "Delete" ]'''
+          new_actions = '''                        , case Lifecycle.nextLeadStage l.stage of
+                            Just next ->
+                                button [ class "btn", onClick (AdvanceClicked l.id) ]
+                                    [ text ("Advance to " ++ next ++ " ▸") ]
+
+                            Nothing ->
+                                text ""
+                        , if Lifecycle.leadCanConvert l.stage then
+                            button [ class "btn btn-success", onClick (ConvertClicked l.id) ]
+                                [ text "Convert to Student/Client" ]
+
+                          else
+                            text ""
+                        , button [ class "btn btn-danger", onClick (DeleteLeadConfirmed l.id) ] [ text "Delete" ]'''
+          replace('web/src/Views.elm', old_actions, new_actions)
+
+          replace('web/src/Views.elm', '                , button [ class "btn btn-primary", onClick OpenAddClient ] [ text "+ Add Client" ]\n', '')
+
+          replace('api/src/ECC/DB.hs', '''leadStages =
+            [ "New Lead", "Contacted", "Initial Assessment", "Qualified"
+            , "Consultation Booked", "Proposal Sent", "Converted", "Closed/Lost" ]''', '''leadStages =
+            [ "Lead", "Qualified", "Consultation", "Application/Deal"
+            , "Student/Client", "Completed", "Lost" ]''')
+
+          replace('api/src/ECC/DB.hs', ', nonEmpty (nlQuality nl), maybe "New Lead" id (nlStage nl)', ', nonEmpty (nlQuality nl), "Lead"')
+
+          old_next = '''  where
+              nextOf s = case break (== s) leadStages of
+                (_, (_:after)) -> listToMaybe after
+                _              -> Nothing'''
+          new_next = '''  where
+              nextOf s = case s of
+                "Lead"           -> Just "Qualified"
+                "Qualified"      -> Just "Consultation"
+                "Consultation"   -> Just "Application/Deal"
+                "Student/Client" -> Just "Completed"
+                _                -> Nothing'''
+          replace('api/src/ECC/DB.hs', old_next, new_next)
+
+          replace('api/src/ECC/DB.hs', "VALUES (?,?,?,'Documents Under Review')", "VALUES (?,?,?,'Submitted')")
+          replace('api/src/ECC/DB.hs', "UPDATE leads SET stage = 'Converted', converted_client_id = ?, updated_at = NOW() WHERE id = ?", "UPDATE leads SET stage = 'Student/Client', converted_client_id = ?, updated_at = NOW() WHERE id = ?")
+          replace('api/src/ECC/DB.hs', '(\"to\", A.String \"Converted\")', '(\"to\", A.String \"Student/Client\")')
+          replace('api/src/ECC/DB.hs', '     maybe "Documents Under Review" id (ciStage ci), ciNextDeadline ci)', '     "Submitted", ciNextDeadline ci)')
+
+          # Conversion is a business action, not a generic stage advance. The DB
+          # trigger also enforces this, but fail before creating a client.
+          replace('api/src/ECC/DB.hs', '''    Just l -> do
+              client <- insertClientRaw conn (fullName l) (email l) (phone l) (Just officerId)''', '''    Just l
+              | stage l /= "Application/Deal" -> pure Nothing
+              | otherwise -> do
+                  client <- insertClientRaw conn (fullName l) (email l) (phone l) (Just officerId)''')
+
+          # Re-indent the conversion body after adding the guarded branch.
+          p = Path('api/src/ECC/DB.hs')
+          s = p.read_text()
+          start = s.index('                  client <- insertClientRaw conn', s.index('convertToClient ::'))
+          end = s.index('\n\naddNote ::', start)
+          block = s[start:end].splitlines()
+          block = [block[0]] + [('    ' + line if line.strip() else line) for line in block[1:]]
+          s = s[:start] + '\n'.join(block) + s[end:]
+          p.write_text(s)
+
+          # The obsolete bridge must never come back into the production bundle.
+          Path('web/public/lifecycle-ui.js').unlink(missing_ok=True)
+          PY
+
+      - name: Set up Node and Elm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --global elm@0.19.1-6
+      - name: Compile Elm
+        working-directory: web
+        run: elm make src/Main.elm --optimize --output=/tmp/main.js
+
+      - name: Set up Haskell
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.10.3'
+          cabal-version: 'latest'
+      - name: Test Haskell
+        working-directory: api
+        run: |
+          cabal update
+          cabal build all -j2
+          cabal test all -j2
+
+      - name: Commit validated implementation
+        shell: bash
+        run: |
+          rm -f .github/workflows/native-lifecycle-apply.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: implement native CRM lifecycle [native-lifecycle-applied]"
+          git push origin HEAD:work/native-lifecycle
