@@ -65,19 +65,18 @@ import Json.Encode as E
 
 
 
--- ---------- domain constants (mirrored from the original CRM) ----------
+-- ---------- domain constants ----------
 
 
 leadStages : List String
 leadStages =
-    [ "New Lead"
-    , "Contacted"
-    , "Initial Assessment"
+    [ "Lead"
     , "Qualified"
-    , "Consultation Booked"
-    , "Proposal Sent"
-    , "Converted"
-    , "Closed/Lost"
+    , "Consultation"
+    , "Application/Deal"
+    , "Student/Client"
+    , "Completed"
+    , "Lost"
     ]
 
 
@@ -117,7 +116,7 @@ taskStatuses =
 
 caseStages : List String
 caseStages =
-    [ "Documents Under Review", "Submitted", "Decision Pending", "Approved", "Rejected" ]
+    [ "Submitted", "Processing", "Approved", "Completed", "Cancelled", "Lost" ]
 
 
 roles : List String
@@ -218,17 +217,90 @@ leadDecoder =
         |> required "updatedAt" dateStr
 
 
+type alias Client =
+    { id : Int
+    , number : String
+    , fullName : String
+    , email : Maybe String
+    , phone : Maybe String
+    , consultantId : Maybe Int
+    , consultantName : Maybe String
+    , createdAt : String
+    , updatedAt : String
+    }
+
+
+clientDecoder : Decoder Client
+clientDecoder =
+    D.succeed Client
+        |> required "clientId" int
+        |> required "clientNumber" string
+        |> required "fullName" string
+        |> required "email" maybeString
+        |> required "phone" maybeString
+        |> required "consultantId" maybeInt
+        |> required "consultantName" maybeString
+        |> required "createdAt" dateStr
+        |> required "updatedAt" dateStr
+
+
+type alias CaseRow =
+    { id : Int
+    , caseNumber : String
+    , service : String
+    , destination : Maybe String
+    , stage : String
+    , nextDeadline : Maybe String
+    , totalFee : Float
+    , paidAmount : Float
+    , balance : Float
+    }
+
+
+caseDecoder : Decoder CaseRow
+caseDecoder =
+    D.succeed CaseRow
+        |> required "caseId" int
+        |> required "caseNumber" string
+        |> required "service" string
+        |> required "destination" maybeString
+        |> required "stage" string
+        |> required "nextDeadline" (nullable dateStr)
+        |> required "totalFee" D.float
+        |> required "paidAmount" D.float
+        |> required "balance" D.float
+
+
+type alias Document =
+    { id : Int
+    , name : String
+    , docType : String
+    , status : String
+    , createdAt : String
+    }
+
+
+documentDecoder : Decoder Document
+documentDecoder =
+    D.succeed Document
+        |> required "documentId" int
+        |> required "name" string
+        |> required "docType" string
+        |> required "status" string
+        |> required "createdAt" dateStr
+
+
 type alias Task =
     { id : Int
-    , leadId : Int
-    , leadName : Maybe String
     , title : String
     , description : Maybe String
     , dueDate : Maybe String
     , priority : String
     , status : String
     , assignedTo : Maybe Int
-    , assigneeName : Maybe String
+    , assignedName : Maybe String
+    , leadId : Maybe Int
+    , clientId : Maybe Int
     , createdAt : String
     }
 
@@ -236,92 +308,61 @@ type alias Task =
 taskDecoder : Decoder Task
 taskDecoder =
     D.succeed Task
-        |> required "id" int
-        |> required "leadId" int
-        |> required "leadName" maybeString
+        |> required "taskId" int
         |> required "title" string
         |> required "description" maybeString
         |> required "dueDate" (nullable dateStr)
         |> required "priority" string
         |> required "status" string
         |> required "assignedTo" maybeInt
-        |> required "assigneeName" maybeString
+        |> required "assignedName" maybeString
+        |> required "leadId" maybeInt
+        |> required "clientId" maybeInt
         |> required "createdAt" dateStr
 
 
 type alias Activity =
     { id : Int
-    , leadId : Int
-    , leadName : Maybe String
-    , kind : String
-    , description : Maybe String
-    , date : String
+    , action : String
+    , details : Maybe String
+    , actorName : Maybe String
+    , createdAt : String
     }
 
 
 activityDecoder : Decoder Activity
 activityDecoder =
     D.succeed Activity
-        |> required "id" int
-        |> required "leadId" int
-        |> required "leadName" maybeString
-        |> required "kind" string
-        |> required "description" maybeString
-        |> required "date" dateStr
-
-
-type alias Client =
-    { id : Int
-    , number : String
-    , fullName : String
-    , email : Maybe String
-    , phone : Maybe String
-    , caseOfficerId : Maybe Int
-    , caseOfficerName : Maybe String
-    , createdAt : String
-    }
-
-
-clientDecoder : Decoder Client
-clientDecoder =
-    D.succeed Client
-        |> required "id" int
-        |> required "number" string
-        |> required "fullName" string
-        |> required "email" maybeString
-        |> required "phone" maybeString
-        |> required "caseOfficerId" maybeInt
-        |> required "caseOfficerName" maybeString
+        |> required "activityId" int
+        |> required "action" string
+        |> required "details" maybeString
+        |> required "actorName" maybeString
         |> required "createdAt" dateStr
 
 
-type alias CaseRow =
-    { id : Int
-    , clientId : Int
-    , category : Maybe String
-    , destination : Maybe String
-    , stage : String
-    , deadline : Maybe String
-    , createdAt : String
+type alias LeadDetail =
+    { lead : Lead
+    , tasks : List Task
+    , documents : List Document
+    , activities : List Activity
     }
 
 
-caseDecoder : Decoder CaseRow
-caseDecoder =
-    D.succeed CaseRow
-        |> required "id" int
-        |> required "clientId" int
-        |> required "category" maybeString
-        |> required "destination" maybeString
-        |> required "stage" string
-        |> required "deadline" (nullable dateStr)
-        |> required "createdAt" dateStr
+leadDetailDecoder : Decoder LeadDetail
+leadDetailDecoder =
+    D.succeed LeadDetail
+        |> required "lead" leadDecoder
+        |> required "tasks" (list taskDecoder)
+        |> required "documents" (list documentDecoder)
+        |> required "activities" (list activityDecoder)
 
 
 type alias ClientDetail =
     { client : Client
     , cases : List CaseRow
+    , tasks : List Task
     , documents : List Document
+    , activities : List Activity
     }
 
 
@@ -330,68 +371,65 @@ clientDetailDecoder =
     D.succeed ClientDetail
         |> required "client" clientDecoder
         |> required "cases" (list caseDecoder)
-        |> required "documents" (list documentDecoder)
-
-
-type alias LeadDetail =
-    { lead : Lead
-    , tasks : List Task
-    , activities : List Activity
-    , documents : List Document
-    }
-
-
-{-| The lead detail endpoint returns
-@{"lead":…,"tasks":[…],"activities":[…],"documents":[…]}@.
--}
-leadDetailDecoder : Decoder LeadDetail
-leadDetailDecoder =
-    D.succeed LeadDetail
-        |> required "lead" leadDecoder
         |> required "tasks" (list taskDecoder)
-        |> required "activities" (list activityDecoder)
         |> required "documents" (list documentDecoder)
+        |> required "activities" (list activityDecoder)
 
 
-{-| An uploaded file's metadata; bytes are fetched via the download URL.
--}
-type alias Document =
-    { id : Int
-    , leadId : Maybe Int
-    , clientId : Maybe Int
-    , filename : String
-    , mimeType : String
-    , size : Int
-    , uploaderName : Maybe String
-    , createdAt : String
+type alias StageCount =
+    { stage : String
+    , count : Int
     }
 
 
-documentDecoder : Decoder Document
-documentDecoder =
-    D.succeed Document
-        |> required "id" int
-        |> required "leadId" maybeInt
-        |> required "clientId" maybeInt
-        |> required "filename" string
-        |> required "mimeType" string
-        |> required "size" int
-        |> required "uploader" maybeString
-        |> required "createdAt" dateStr
+stageCountDecoder : Decoder StageCount
+stageCountDecoder =
+    D.succeed StageCount
+        |> required "stage" string
+        |> required "count" int
 
 
-{-| One audit-trail row.  @changes@ holds @{"Field":{"from":…,"to":…}}@ for
-updates and is Nothing for deletes; it stays as raw JSON here and is
-rendered by the view.
--}
+type alias SourceCount =
+    { source : String
+    , count : Int
+    }
+
+
+sourceCountDecoder : Decoder SourceCount
+sourceCountDecoder =
+    D.succeed SourceCount
+        |> required "source" string
+        |> required "count" int
+
+
+type alias Stats =
+    { totalLeads : Int
+    , activeClients : Int
+    , pendingTasks : Int
+    , overdueTasks : Int
+    , leadsByStage : List StageCount
+    , leadsBySource : List SourceCount
+    }
+
+
+statsDecoder : Decoder Stats
+statsDecoder =
+    D.succeed Stats
+        |> required "totalLeads" int
+        |> required "activeClients" int
+        |> required "pendingTasks" int
+        |> required "overdueTasks" int
+        |> required "leadsByStage" (list stageCountDecoder)
+        |> required "leadsBySource" (list sourceCountDecoder)
+
+
 type alias AuditEntry =
     { id : Int
-    , entityType : String
-    , entityId : Int
-    , entityName : Maybe String
-    , action : String
-    , changes : Maybe D.Value
     , actorName : Maybe String
+    , action : String
+    , entityType : String
+    , entityId : Maybe Int
+    , details : Maybe String
     , createdAt : String
     }
 
@@ -399,95 +437,47 @@ type alias AuditEntry =
 auditDecoder : Decoder AuditEntry
 auditDecoder =
     D.succeed AuditEntry
-        |> required "id" int
-        |> required "entityType" string
-        |> required "entityId" int
-        |> required "entityName" maybeString
-        |> required "action" string
-        |> required "changes" (nullable D.value)
+        |> required "auditId" int
         |> required "actorName" maybeString
+        |> required "action" string
+        |> required "entityType" string
+        |> required "entityId" maybeInt
+        |> required "details" maybeString
         |> required "createdAt" dateStr
 
 
-{-| Result of a bulk CSV import: how many rows were created and which
-data rows failed, with the server's reason.
--}
 type alias ImportRowError =
     { row : Int
-    , error : String
+    , message : String
     }
 
 
 type alias ImportResult =
-    { imported : Int
-    , failed : List ImportRowError
+    { inserted : Int
+    , skipped : Int
+    , errors : List ImportRowError
     }
+
+
+importRowErrorDecoder : Decoder ImportRowError
+importRowErrorDecoder =
+    D.succeed ImportRowError
+        |> required "row" int
+        |> required "message" string
 
 
 importResultDecoder : Decoder ImportResult
 importResultDecoder =
     D.succeed ImportResult
-        |> required "imported" int
-        |> required "failed"
-            (list
-                (D.succeed ImportRowError
-                    |> required "row" int
-                    |> required "error" string
-                )
-            )
+        |> required "inserted" int
+        |> required "skipped" int
+        |> required "errors" (list importRowErrorDecoder)
 
 
-type alias StageCount =
-    { stage : String, count : Int }
-
-
-type alias SourceCount =
-    { source : String, count : Int }
-
-
-type alias Stats =
-    { totalLeads : Int
-    , hotLeads : Int
-    , totalClients : Int
-    , openTasks : Int
-    , overdueTasks : Int
-    , stageCounts : List StageCount
-    , sourceCounts : List SourceCount
-    , upcomingTasks : List Task
-    , recentActivity : List Activity
-    }
-
-
-statsDecoder : Decoder Stats
-statsDecoder =
-    let
-        stageCount =
-            D.map2 (\s c -> { stage = s, count = c })
-                (D.field "scStage" string)
-                (D.field "scCount" int)
-
-        sourceCount =
-            D.map2 (\s c -> { source = s, count = c })
-                (D.field "srcSource" string)
-                (D.field "srcCount" int)
-    in
-    D.succeed Stats
-        |> required "stTotalLeads" int
-        |> required "stHotLeads" int
-        |> required "stTotalClients" int
-        |> required "stOpenTasks" int
-        |> required "stOverdueTasks" int
-        |> required "stStageCounts" (list stageCount)
-        |> required "stSourceCounts" (list sourceCount)
-        |> required "stUpcomingTasks" (list taskDecoder)
-        |> required "stRecentActivity" (list activityDecoder)
-
-
-
-{-| One page of leads from the paginated/filtered @/api/leads@ endpoint.
--}
 type alias LeadPage =
     { items : List Lead
+    , page : Int
+    , pageSize : Int
     , total : Int
     }
 
@@ -496,13 +486,15 @@ leadPageDecoder : Decoder LeadPage
 leadPageDecoder =
     D.succeed LeadPage
         |> required "items" (list leadDecoder)
+        |> required "page" int
+        |> required "pageSize" int
         |> required "total" int
 
 
-{-| One page of clients from the paginated/searchable @/api/clients@ endpoint.
--}
 type alias ClientPage =
     { items : List Client
+    , page : Int
+    , pageSize : Int
     , total : Int
     }
 
@@ -511,36 +503,12 @@ clientPageDecoder : Decoder ClientPage
 clientPageDecoder =
     D.succeed ClientPage
         |> required "items" (list clientDecoder)
+        |> required "page" int
+        |> required "pageSize" int
         |> required "total" int
 
 
-
 -- ---------- encoders ----------
-
-
-encodeNonEmpty : String -> E.Value
-encodeNonEmpty s =
-    if String.trim s == "" then
-        E.null
-
-    else
-        E.string s
-
-
-maybeDate : String -> E.Value
-maybeDate s =
-    if String.trim s == "" then
-        E.null
-
-    else
-        E.string s
-
-
-type alias BulkSpec =
-    { op : String
-    , ids : List Int
-    , consultantId : Maybe Int
-    }
 
 
 encodeNewLead :
@@ -548,6 +516,7 @@ encodeNewLead :
     , email : String
     , phone : String
     , source : String
+    , consultantId : Maybe Int
     , quality : String
     , stage : String
     , destination : String
@@ -556,162 +525,169 @@ encodeNewLead :
     , nextFollowup : String
     }
     -> E.Value
-encodeNewLead f =
+encodeNewLead x =
     E.object
-        [ ("nlFullName", E.string f.fullName)
-        , ("nlEmail", encodeNonEmpty f.email)
-        , ("nlPhone", encodeNonEmpty f.phone)
-        , ("nlSource", encodeNonEmpty f.source)
-        , ("nlQuality", encodeNonEmpty f.quality)
-        , ("nlStage", encodeNonEmpty f.stage)
-        , ("nlDestination", encodeNonEmpty f.destination)
-        , ("nlService", encodeNonEmpty f.service)
-        , ("nlNotes", encodeNonEmpty f.notes)
-        , ("nlNextFollowup", maybeDate f.nextFollowup)
-        , ("nlConsultantId", E.null)
+        [ ( "fullName", E.string x.fullName )
+        , ( "email", nullableString x.email )
+        , ( "phone", nullableString x.phone )
+        , ( "source", nullableString x.source )
+        , ( "consultantId", maybeIntValue x.consultantId )
+        , ( "quality", nullableString x.quality )
+        , ( "stage", nullableString x.stage )
+        , ( "destination", nullableString x.destination )
+        , ( "service", nullableString x.service )
+        , ( "notes", nullableString x.notes )
+        , ( "nextFollowup", nullableString x.nextFollowup )
         ]
 
 
 encodeUpdateLead :
-    { fullName : String
-    , email : String
-    , phone : String
-    , source : String
-    , quality : String
-    , stage : String
-    , destination : String
-    , service : String
-    , notes : String
-    , lastContact : String
-    , nextFollowup : String
+    { fullName : Maybe String
+    , email : Maybe String
+    , phone : Maybe String
+    , source : Maybe String
     , consultantId : Maybe Int
+    , quality : Maybe String
+    , stage : Maybe String
+    , destination : Maybe String
+    , service : Maybe String
+    , notes : Maybe String
+    , lastContact : Maybe String
+    , nextFollowup : Maybe String
     }
     -> E.Value
-encodeUpdateLead f =
+encodeUpdateLead x =
     E.object
-        [ ("ulFullName", encodeNonEmpty f.fullName)
-        , ("ulEmail", encodeNonEmpty f.email)
-        , ("ulPhone", encodeNonEmpty f.phone)
-        , ("ulSource", encodeNonEmpty f.source)
-        , ("ulQuality", encodeNonEmpty f.quality)
-        , ("ulStage", encodeNonEmpty f.stage)
-        , ("ulDestination", encodeNonEmpty f.destination)
-        , ("ulService", encodeNonEmpty f.service)
-        , ("ulNotes", encodeNonEmpty f.notes)
-        , ("ulLastContact", maybeDate f.lastContact)
-        , ("ulNextFollowup", maybeDate f.nextFollowup)
-        , ("ulConsultantId", Maybe.map E.int f.consultantId |> Maybe.withDefault E.null)
+        [ ( "fullName", maybeStringValue x.fullName )
+        , ( "email", maybeStringValue x.email )
+        , ( "phone", maybeStringValue x.phone )
+        , ( "source", maybeStringValue x.source )
+        , ( "consultantId", maybeIntValue x.consultantId )
+        , ( "quality", maybeStringValue x.quality )
+        , ( "stage", maybeStringValue x.stage )
+        , ( "destination", maybeStringValue x.destination )
+        , ( "service", maybeStringValue x.service )
+        , ( "notes", maybeStringValue x.notes )
+        , ( "lastContact", maybeStringValue x.lastContact )
+        , ( "nextFollowup", maybeStringValue x.nextFollowup )
         ]
-
-
-encodeNewTask :
-    { leadId : Int
-    , title : String
-    , description : String
-    , dueDate : String
-    , priority : String
-    }
-    -> E.Value
-encodeNewTask f =
-    E.object
-        [ ("ntLeadId", E.int f.leadId)
-        , ("ntTitle", E.string f.title)
-        , ("ntDescription", encodeNonEmpty f.description)
-        , ("ntDueDate", maybeDate f.dueDate)
-        , ("ntPriority", encodeNonEmpty f.priority)
-        ]
-
-
-encodeTaskStatus : String -> E.Value
-encodeTaskStatus status =
-    E.object [ ("tsrStatus", E.string status) ]
-
-
-encodeNote : String -> E.Value
-encodeNote note =
-    E.object [ ("nrNote", E.string note) ]
 
 
 encodeNewClient :
-    { fullName : String
-    , email : String
-    , phone : String
-    , officerId : Maybe Int
-    }
+    { fullName : String, email : String, phone : String, consultantId : Maybe Int }
     -> E.Value
-encodeNewClient f =
+encodeNewClient x =
     E.object
-        [ ("ncFullName", E.string f.fullName)
-        , ("ncEmail", encodeNonEmpty f.email)
-        , ("ncPhone", encodeNonEmpty f.phone)
-        , ("ncCaseOfficer", Maybe.map E.int f.officerId |> Maybe.withDefault E.null)
+        [ ( "fullName", E.string x.fullName )
+        , ( "email", nullableString x.email )
+        , ( "phone", nullableString x.phone )
+        , ( "consultantId", maybeIntValue x.consultantId )
         ]
 
 
 encodeCaseInput :
-    { category : String
-    , destination : String
-    , stage : String
-    , deadline : String
-    , caseId : Maybe Int
+    { service : String, destination : String, stage : String, deadline : String }
+    -> E.Value
+encodeCaseInput x =
+    E.object
+        [ ( "service", E.string x.service )
+        , ( "destination", nullableString x.destination )
+        , ( "stage", E.string x.stage )
+        , ( "nextDeadline", nullableString x.deadline )
+        ]
+
+
+encodeNewTask :
+    { title : String
+    , description : String
+    , dueDate : String
+    , priority : String
+    , assignedTo : Maybe Int
+    , leadId : Maybe Int
+    , clientId : Maybe Int
     }
     -> E.Value
-encodeCaseInput f =
+encodeNewTask x =
     E.object
-        [ ("ciServiceCategory", encodeNonEmpty f.category)
-        , ("ciDestination", encodeNonEmpty f.destination)
-        , ("ciStage", encodeNonEmpty f.stage)
-        , ("ciNextDeadline", maybeDate f.deadline)
-        , ("ciCaseId", Maybe.map E.int f.caseId |> Maybe.withDefault E.null)
+        [ ( "title", E.string x.title )
+        , ( "description", nullableString x.description )
+        , ( "dueDate", nullableString x.dueDate )
+        , ( "priority", E.string x.priority )
+        , ( "assignedTo", maybeIntValue x.assignedTo )
+        , ( "leadId", maybeIntValue x.leadId )
+        , ( "clientId", maybeIntValue x.clientId )
         ]
+
+
+encodeTaskStatus : String -> E.Value
+encodeTaskStatus s =
+    E.object [ ( "status", E.string s ) ]
+
+
+encodeNote : String -> E.Value
+encodeNote body =
+    E.object [ ( "body", E.string body ) ]
+
+
+type alias BulkSpec =
+    { action : String
+    , ids : List Int
+    , assigneeId : Maybe Int
+    , stage : Maybe String
+    }
 
 
 encodeBulkRequest : BulkSpec -> E.Value
-encodeBulkRequest b =
+encodeBulkRequest x =
     E.object
-        [ ("brOp", E.string b.op)
-        , ("brIds", E.list E.int b.ids)
-        , ("brConsultantId", Maybe.map E.int b.consultantId |> Maybe.withDefault E.null)
+        [ ( "action", E.string x.action )
+        , ( "ids", E.list E.int x.ids )
+        , ( "assigneeId", maybeIntValue x.assigneeId )
+        , ( "stage", maybeStringValue x.stage )
         ]
 
 
-{-| Passwords are only sent on create; updates use encodeUpdateUser.
--}
-encodeNewUser :
-    { name : String
-    , email : String
-    , role : String
-    , password : String
-    }
-    -> E.Value
-encodeNewUser f =
+encodeNewUser : { email : String, name : String, role : String, password : String } -> E.Value
+encodeNewUser x =
     E.object
-        [ ("nuName", E.string f.name)
-        , ("nuEmail", E.string f.email)
-        , ("nuRole", E.string f.role)
-        , ("nuPassword", E.string f.password)
+        [ ( "email", E.string x.email )
+        , ( "name", E.string x.name )
+        , ( "role", E.string x.role )
+        , ( "password", E.string x.password )
         ]
 
 
-{-| Empty password keeps the current one.
--}
-encodeUpdateUser :
-    { name : String
-    , role : String
-    , password : String
-    }
-    -> E.Value
-encodeUpdateUser f =
+encodeUpdateUser : { email : String, name : String, role : String } -> E.Value
+encodeUpdateUser x =
     E.object
-        [ ("uuName", E.string f.name)
-        , ("uuRole", E.string f.role)
-        , ("uuPassword", encodeNonEmpty f.password)
+        [ ( "email", E.string x.email )
+        , ( "name", E.string x.name )
+        , ( "role", E.string x.role )
         ]
 
 
-encodePasswordChange : { current : String, new : String } -> E.Value
-encodePasswordChange f =
-    E.object
-        [ ("pcCurrent", E.string f.current)
-        , ("pcNew", E.string f.new)
-        ]
+encodePasswordChange : String -> E.Value
+encodePasswordChange password =
+    E.object [ ( "password", E.string password ) ]
+
+
+nullableString : String -> E.Value
+nullableString s =
+    if String.trim s == "" then
+        E.null
+    else
+        E.string s
+
+
+maybeStringValue : Maybe String -> E.Value
+maybeStringValue m =
+    case m of
+        Nothing -> E.null
+        Just s -> E.string s
+
+
+maybeIntValue : Maybe Int -> E.Value
+maybeIntValue m =
+    case m of
+        Nothing -> E.null
+        Just n -> E.int n
