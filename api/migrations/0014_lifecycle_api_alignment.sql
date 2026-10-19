@@ -1,10 +1,19 @@
 -- Align database-side operational APIs and reminders with the ECC CRM 2.0
 -- lifecycle introduced in 0013.
 
--- crm_command is defined in 0007.  Rather than duplicating that large function
--- here, enforce canonical case state input at the database boundary used by it.
+-- crm_command is defined in 0007. During the UI/API migration, canonicalize
+-- the one legacy application stage still emitted by the current Haskell
+-- conversion path. All data is stored in canonical form.
 CREATE OR REPLACE FUNCTION crm_case_command_state_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+  NEW.stage = CASE NEW.stage
+    WHEN 'Documents Under Review' THEN 'Submitted'
+    WHEN 'Decision Pending' THEN 'Processing'
+    WHEN 'Rejected' THEN 'Lost'
+    WHEN 'Closed/Lost' THEN 'Lost'
+    ELSE NEW.stage
+  END;
+
   IF NEW.stage NOT IN ('Submitted','Processing','Approved','Completed','Cancelled','Lost') THEN
     RAISE EXCEPTION 'Invalid application lifecycle stage: %', NEW.stage USING ERRCODE='P0001';
   END IF;
@@ -16,7 +25,7 @@ CREATE TRIGGER cases_command_state_guard
 BEFORE INSERT OR UPDATE OF stage ON cases
 FOR EACH ROW EXECUTE FUNCTION crm_case_command_state_guard();
 
--- Conversion is deliberately available only from Application/Deal.  This
+-- Conversion is deliberately available only from Application/Deal. This
 -- protects against accidental conversion from a raw or unqualified lead even
 -- if a future UI or AI tool calls the conversion endpoint directly.
 CREATE OR REPLACE FUNCTION crm_conversion_entry_guard() RETURNS trigger LANGUAGE plpgsql AS $$
