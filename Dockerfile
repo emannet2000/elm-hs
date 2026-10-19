@@ -14,6 +14,12 @@ RUN cabal update \
 # Build the Elm SPA from source so production can never serve a stale
 # web/dist that was compiled on a developer workstation.
 FROM node:22-bookworm-slim AS frontend-build
+# The slim Node image does not guarantee a usable CA trust store for Elm's
+# HTTPS client. Install/update it before Elm contacts package.elm-lang.org.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 RUN npm install --global elm@0.19.1-6
 WORKDIR /build/web
 COPY web/elm.json ./elm.json
