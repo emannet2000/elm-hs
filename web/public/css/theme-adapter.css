@@ -18,15 +18,24 @@ body { padding:0; background:#f5f7fa; }
 .app-shell :is(.stat-label,.stage-name,.text-muted,.lead-source,.lead-count,.kv) { color:var(--text-muted); }
 .app-shell .btn { border-radius:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); box-shadow:none; }
 .app-shell .btn-primary { background:var(--primary); color:var(--on-primary); border-color:var(--primary); }
-.app-shell :is(input,select,textarea) { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; }
+.app-shell :is(input,select,textarea) { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; min-height:40px; }
+.app-shell :is(input,select,textarea):focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-glow); }
 .app-shell :is(thead,th) { background:var(--surface-2); color:var(--text-muted); }
 .app-shell :is(td,th,.lead-item) { border-color:var(--border); }
 .app-shell :is(.stage-bar,.lead-item.clickable:hover) { background:var(--surface-2); }
 .app-shell .stage-fill { background:var(--gold); }
 .app-shell .modal-overlay { background:rgba(16,23,34,.65); }
 .app-shell .page-head { margin-bottom:24px; }
+.app-shell .card { transition:border-color .15s ease, box-shadow .15s ease; }
+.app-shell .card:hover { border-color:var(--border-strong); }
+.app-shell .stat { min-height:112px; display:flex; flex-direction:column; justify-content:center; }
+.app-shell .stat-value { font-size:30px; letter-spacing:-.035em; }
+.app-shell .stat-sub { margin-top:6px; }
+.app-shell .main-grid { align-items:start; }
 .workflow-frame { display:block; border:0; width:100%; min-height:calc(100vh - 130px); }
-.login-wrap { min-height:100vh; display:grid; grid-template-columns:1fr 1fr; padding:0; background:#000; color:#f5eedc; }
+
+/* Login keeps the ECC dark/gold identity while the signed-in workspace stays calm. */
+.login-wrap { min-height:100vh; display:grid; grid-template-columns:minmax(0,1.05fr) minmax(420px,.95fr); padding:0; background:#000; color:#f5eedc; }
 .login-wrap:before { content:"ECC CONSULTING GLOBAL\A\A Your next chapter\A starts here.\A\A Expert guidance. Every step of the way."; white-space:pre-line; align-self:stretch; display:flex; align-items:center; padding:10vw; font:500 clamp(22px,3vw,46px)/1.4 Georgia,serif; color:#f0cf74; border-right:1px solid rgba(226,185,77,.22); background:radial-gradient(ellipse at center,rgba(226,185,77,.12),transparent 70%); }
 .login-card { margin:auto; width:min(420px,90%); border:1px solid rgba(226,185,77,.22); background:#0e0e0e; color:#f5eedc; padding:36px; border-radius:14px; box-shadow:0 20px 70px #000; }
 .login-card h3 { color:#f0cf74; font:500 30px Georgia,serif; }
@@ -34,24 +43,47 @@ body { padding:0; background:#f5f7fa; }
 .login-card .btn-primary { background:#e2b94d; color:#17130b; }
 .login-logo-icon { font-size:0; background:transparent url('/icons/ecc-192.png') center/contain no-repeat; width:70px; height:70px; }
 .login-sub,.login-hint { color:#b9b19d; }
-@media(max-width:850px) {
- .app-shell { grid-template-columns:1fr; }
- .app-shell .sidebar { position:relative; height:auto; padding:14px; }
- .app-shell .sidebar__brand { padding-bottom:10px; margin-bottom:0; }
- .app-shell .sidebar__nav { flex-direction:row; overflow-x:auto; flex-wrap:nowrap; padding-bottom:8px; }
- .sidebar .nav-item { white-space:nowrap; }
- .app-shell .sidebar__user,.app-shell .sidebar__signout-btn { display:none; }
- .app-shell .topbar { height:auto; min-height:60px; padding:12px 16px; gap:8px; flex-wrap:wrap; }
- .app-shell .container { padding:20px 16px; }
- .login-wrap { grid-template-columns:1fr; padding:30px 0; }
- .login-wrap:before { padding:24px; font-size:24px; border:0; }
- .workflow-frame { min-height:80vh; }
-}
-/* Reference login structure and decorative rings/dots. */
 .login-wrap.ecc-split:before { content:none; }
-.login-wrap .auth-panel { position:relative; z-index:1; }
+.login-wrap .brand-panel__logo { width:68px; height:68px; filter:drop-shadow(0 8px 24px rgba(226,185,77,.2)); }
+.login-wrap .auth-panel { position:relative; z-index:1; background:linear-gradient(180deg,#080808,#020202); }
 .login-wrap .auth-panel__inner { width:min(420px,100%); }
-.login-wrap .auth-panel :is(input,select) { background:#161616; color:#f5eedc; border:1px solid rgba(226,185,77,.22); border-radius:9px; padding:12px 14px; width:100%; }
+.login-wrap .auth-panel :is(input,select) { background:#161616; color:#f5eedc; border:1px solid rgba(226,185,77,.22); border-radius:9px; padding:12px 14px; width:100%; min-height:46px; }
+.login-wrap .auth-panel :is(input,select):focus { outline:none; border-color:#e2b94d; box-shadow:0 0 0 3px rgba(226,185,77,.12); }
 .login-wrap .auth-panel label { color:rgba(245,238,220,.7); font-size:13px; }
-.login-wrap .ecc-btn { width:100%; }
-@media(max-width:850px) { .login-wrap .brand-panel { display:none; }.login-wrap .auth-panel { padding:36px 24px; }.login-wrap.ecc-split { display:block; } }
+.login-wrap .ecc-btn { width:100%; min-height:46px; }
+
+/* Compact but usable responsive workspace. */
+@media(max-width:850px) {
+ .app-shell { grid-template-columns:1fr; padding-bottom:72px; }
+ .app-shell .sidebar { position:relative; height:auto; padding:12px 14px; }
+ .app-shell .sidebar__brand { padding:2px 4px 12px; margin-bottom:0; }
+ .sidebar-brand-logo { width:38px; height:38px; }
+ .app-shell .sidebar__nav { position:fixed; left:0; right:0; bottom:0; z-index:500; flex-direction:row; overflow-x:auto; flex-wrap:nowrap; gap:4px; padding:8px max(8px,env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)); background:#182131; border-top:1px solid #303a4a; box-shadow:0 -8px 24px rgba(0,0,0,.18); scrollbar-width:none; }
+ .app-shell .sidebar__nav::-webkit-scrollbar { display:none; }
+ .sidebar .nav-item { white-space:nowrap; min-height:44px; padding:8px 12px; }
+ .app-shell .sidebar__user,.app-shell .sidebar__signout-btn { display:none; }
+ .app-shell .topbar { height:auto; min-height:58px; padding:10px 16px; gap:8px; flex-wrap:wrap; }
+ .workspace-breadcrumb { width:100%; }
+ .app-shell .container { padding:20px 16px; }
+ .app-shell .stats { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+ .app-shell .stat { min-height:96px; padding:14px; }
+ .app-shell .stat-value { font-size:25px; }
+ .app-shell .main-grid { gap:12px; }
+ .app-shell .card { padding:16px; }
+ .workflow-frame { min-height:80vh; }
+ .login-wrap { grid-template-columns:1fr; padding:0; }
+ .login-wrap .brand-panel { display:none; }
+ .login-wrap .auth-panel { min-height:100vh; padding:36px 24px; }
+ .login-wrap.ecc-split { display:block; }
+}
+
+@media(max-width:520px) {
+ .app-shell .stats { grid-template-columns:1fr 1fr; }
+ .app-shell .topbar .btn { font-size:11px; padding:7px 9px; }
+ .app-shell .container { padding:16px 12px; }
+ .app-shell .page-head { align-items:stretch; }
+ .app-shell .page-head > * { max-width:100%; }
+ .app-shell .modal-content { padding:20px 16px; }
+ .app-shell .data-table { min-width:600px; }
+ .notification-dropdown { position:fixed; top:64px; left:12px; right:12px; width:auto; max-height:70vh; }
+}
